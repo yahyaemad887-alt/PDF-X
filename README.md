@@ -13,10 +13,10 @@ Engineered with performance-first architecture, **PDF X** combines native proces
 ## 📱 App Screenshots
 
 <p align="center">
-  <img src="screenshoots/a.png" width="22%" alt="Screenshot A" />
-  <img src="screenshoots/b.png" width="22%" alt="Screenshot B" />
-  <img src="screenshoots/c.png" width="22%" alt="Screenshot C" />
-  <img src="screenshoots/d.png" width="22%" alt="Screenshot D" />
+  <img src="assets/screenshots/a.png" width="22%" alt="Screenshot A"/>
+  <img src="assets/screenshots/b.png" width="22%" alt="Screenshot B"/>
+  <img src="assets/screenshots/c.png" width="22%" alt="Screenshot C"/>
+  <img src="assets/screenshots/d.png" width="22%" alt="Screenshot D"/>
 </p>
 
 ---
@@ -61,11 +61,11 @@ Full dynamic multi-language localization system supporting seamless switching ac
 - **Framework:** Flutter (Dart SDK >= 3.2.0)
 - **Architecture:** Clean Modular UI/Logic Isolation (`main.dart` -> `ui.dart`)
 - **Key Dependencies:**
-    - `pdfx` & `flutter_pdfview` - Native PDF rendering engines
-    - `excel` - High-performance spreadsheet parser
-    - `google_mlkit_text_recognition` - On-Device Machine Learning OCR
-    - `flutter_localizations` & `intl` - Multi-language translation engine
-    - `open_filex` & `share_plus` - System-level file invocation & sharing handlers
+  - `pdfx` & `flutter_pdfview` - Native PDF rendering engines
+  - `excel` - High-performance spreadsheet parser
+  - `google_mlkit_text_recognition` - On-Device Machine Learning OCR
+  - `flutter_localizations` & `intl` - Multi-language translation engine
+  - `open_filex` & `share_plus` - System-level file invocation & sharing handlers
 
 ---
 
