@@ -10,13 +10,13 @@ Engineered with performance-first architecture, **PDF X** combines native proces
 
 ---
 
-## 📱 App Screenshots
+## 📱 Screenshots
 
-<p align="center">
-  <img src="assets/screenshots/a.png" width="22%" alt="Screenshot A"/>
-  <img src="assets/screenshots/b.png" width="22%" alt="Screenshot B"/>
-  <img src="assets/screenshots/c.png" width="22%" alt="Screenshot C"/>
-  <img src="assets/screenshots/d.png" width="22%" alt="Screenshot D"/>
+<p align="center">&nbsp;&nbsp;&nbsp;
+  <img src="assets/screenshots/b.jpg" width="28%" alt="B" />&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/icon/app_icon.png" width="150" alt="App Icon">
+ <img src="assets/screenshots/c.jpg" width="28%" alt="C" />&nbsp;&nbsp;&nbsp;&nbsp;
+ <img src="assets/screenshots/d.jpg" width="28%" alt="D" />&nbsp;&nbsp;&nbsp;&nbsp;
 </p>
 
 ---
