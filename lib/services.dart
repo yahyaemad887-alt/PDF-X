@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:app_links/app_links.dart';
 
 enum DocumentCategory { all, pdf, word, excel, ppt, txt, image, guides }
 
@@ -64,20 +66,74 @@ class DocumentManagerService {
 
   final List<DocumentItem> _documents = [];
   Set<String> _bookmarkedPaths = {};
+  final AppLinks _appLinks = AppLinks();
 
-  final StreamController<List<DocumentItem>> _docsController = StreamController.broadcast();
-  final StreamController<bool> _scanningController = StreamController.broadcast();
-  final StreamController<String> _progressController = StreamController.broadcast();
+  StreamController<List<DocumentItem>> _docsController = StreamController.broadcast();
+  StreamController<bool> _scanningController = StreamController.broadcast();
+  StreamController<String> _progressController = StreamController.broadcast();
+  StreamController<String> _externalFileController = StreamController.broadcast();
 
   Stream<List<DocumentItem>> get documentsStream => _docsController.stream;
   Stream<bool> get scanningStateStream => _scanningController.stream;
   Stream<String> get progressStream => _progressController.stream;
+  Stream<String> get externalFileStream => _externalFileController.stream;
 
   List<DocumentItem> get currentDocuments => List.unmodifiable(_documents);
 
   int _pendingScanBuffer = 0;
+  StreamSubscription<Uri>? _sub;
 
-  /// تحميل العلامات المرجعية المحفوظة من الذاكرة بشكل آمن
+  void _ensureControllersOpen() {
+    if (_docsController.isClosed) _docsController = StreamController.broadcast();
+    if (_scanningController.isClosed) _scanningController = StreamController.broadcast();
+    if (_progressController.isClosed) _progressController = StreamController.broadcast();
+    if (_externalFileController.isClosed) _externalFileController = StreamController.broadcast();
+  }
+
+  /// الاستماع للملفات القادمة من خارج التطبيق (Open With)
+  Future<void> initExternalFileListener(Function(String path) onFileOpened) async {
+    _ensureControllersOpen();
+
+    // 1. التقاط الملف إذا تم فتح التطبيق منه مباشرة وهو مغلق
+    try {
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) {
+        _handleIncomingUri(initialUri, onFileOpened);
+      }
+    } catch (e) {
+      debugPrint("Error getting initial app link: $e");
+    }
+
+    // 2. الاستماع للملفات عند فتحها أثناء عمل التطبيق في الخلفية
+    _sub?.cancel();
+    _sub = _appLinks.uriLinkStream.listen(
+          (uri) {
+        _handleIncomingUri(uri, onFileOpened);
+      },
+      onError: (err) {
+        debugPrint("Error in app link stream: $err");
+      },
+    );
+  }
+
+  void _handleIncomingUri(Uri uri, Function(String path) onFileOpened) {
+    String filePath = uri.path;
+
+    if (uri.scheme == 'file') {
+      filePath = uri.toFilePath();
+    } else if (uri.scheme == 'content') {
+      filePath = Uri.decodeFull(uri.toString());
+    }
+
+    if (filePath.isNotEmpty) {
+      if (!_externalFileController.isClosed) {
+        _externalFileController.add(filePath);
+      }
+      onFileOpened(filePath);
+    }
+  }
+
+  /// تحميل العلامات المرجعية المحفوظة من الذاكرة
   Future<void> loadSavedBookmarks() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -94,7 +150,6 @@ class DocumentManagerService {
     }
   }
 
-  /// حفظ قائمة العلامات المرجعية في SharedPreferences
   Future<void> _persistBookmarks() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -104,7 +159,6 @@ class DocumentManagerService {
     }
   }
 
-  /// إضافة / إزالة العلامات المرجعية مع حفظها الفوري
   Future<void> toggleBookmark(String docId) async {
     try {
       final index = _documents.indexWhere((doc) => doc.id == docId);
@@ -126,11 +180,25 @@ class DocumentManagerService {
     }
   }
 
-  /// مسح الذاكرة واستخراج المستندات بشكل آمن لا يسبب إغلاق التطبيق
-  Future<void> startFullScan() async {
-    if (_scanningController.isClosed) return;
-    _scanningController.add(true);
+  Future<bool> _requestStoragePermission() async {
+    if (!Platform.isAndroid) return true;
 
+    if (await Permission.manageExternalStorage.isGranted) {
+      return true;
+    }
+
+    var status = await Permission.manageExternalStorage.request();
+    if (status.isGranted) return true;
+
+    status = await Permission.storage.request();
+    return status.isGranted;
+  }
+
+  Future<void> startFullScan() async {
+    _ensureControllersOpen();
+    if (_scanningController.isClosed) return;
+
+    _scanningController.add(true);
     if (!_progressController.isClosed) {
       _progressController.add('scanning_storage');
     }
@@ -138,26 +206,14 @@ class DocumentManagerService {
     await loadSavedBookmarks();
 
     try {
-      if (Platform.isAndroid) {
-        bool hasPermission = await Permission.manageExternalStorage.isGranted;
+      final hasPermission = await _requestStoragePermission();
 
-        if (!hasPermission) {
-          final status = await Permission.manageExternalStorage.request();
-          hasPermission = status.isGranted;
-        }
-
-        if (!hasPermission) {
-          final status = await Permission.storage.request();
-          hasPermission = status.isGranted;
-        }
-
-        if (hasPermission) {
-          final rootDir = Directory('/storage/emulated/0');
-          if (await rootDir.exists()) {
-            _documents.clear();
-            _pendingScanBuffer = 0;
-            await _scanDirectory(rootDir);
-          }
+      if (hasPermission) {
+        final rootDir = Directory('/storage/emulated/0');
+        if (await rootDir.exists()) {
+          _documents.clear();
+          _pendingScanBuffer = 0;
+          await _scanDirectory(rootDir);
         }
       }
     } catch (e) {
@@ -170,7 +226,6 @@ class DocumentManagerService {
     }
   }
 
-  /// فحص المجلدات بشكل آمن مع إرسال التحديثات على دفعات للوقاية من تجميد الواجهة
   Future<void> _scanDirectory(Directory dir) async {
     try {
       final Stream<FileSystemEntity> entities = dir.list(followLinks: false);
@@ -180,29 +235,28 @@ class DocumentManagerService {
 
         try {
           if (entity is Directory) {
-            final String name = entity.path.split(Platform.pathSeparator).last;
-            // تجاهل المجلدات المخفية ومجلدات النظام لتجنب البطء والانهيار
-            if (!name.startsWith('.') && name != 'Android') {
+            final String folderName = p.basename(entity.path);
+            if (!folderName.startsWith('.') && folderName.toLowerCase() != 'android') {
               await _scanDirectory(entity);
             }
           } else if (entity is File) {
-            final String path = entity.path.toLowerCase();
-            final String fileName = entity.path.split(Platform.pathSeparator).last.toLowerCase();
+            final String ext = p.extension(entity.path).toLowerCase();
+            final String fileName = p.basename(entity.path).toLowerCase();
             DocumentCategory? category;
 
-            if (path.endsWith('.pdf')) {
+            if (ext == '.pdf') {
               category = fileName.contains('guide') || fileName.contains('daliil') || fileName.contains('دليل')
                   ? DocumentCategory.guides
                   : DocumentCategory.pdf;
-            } else if (path.endsWith('.doc') || path.endsWith('.docx')) {
+            } else if (ext == '.doc' || ext == '.docx') {
               category = DocumentCategory.word;
-            } else if (path.endsWith('.xlsx') || path.endsWith('.xls')) {
+            } else if (ext == '.xlsx' || ext == '.xls') {
               category = DocumentCategory.excel;
-            } else if (path.endsWith('.ppt') || path.endsWith('.pptx')) {
+            } else if (ext == '.ppt' || ext == '.pptx') {
               category = DocumentCategory.ppt;
-            } else if (path.endsWith('.txt')) {
+            } else if (ext == '.txt') {
               category = DocumentCategory.txt;
-            } else if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.webp')) {
+            } else if (['.jpg', '.jpeg', '.png', '.webp'].contains(ext)) {
               category = DocumentCategory.image;
             }
 
@@ -210,7 +264,7 @@ class DocumentManagerService {
               final stat = await entity.stat();
               final doc = DocumentItem(
                 id: entity.path,
-                name: entity.path.split(Platform.pathSeparator).last,
+                name: p.basename(entity.path),
                 path: entity.path,
                 category: category,
                 sizeInBytes: stat.size,
@@ -222,7 +276,6 @@ class DocumentManagerService {
                 _documents.add(doc);
                 _pendingScanBuffer++;
 
-                // تحديث الواجهة كل 25 ملفاً لتجنب الإغراق
                 if (_pendingScanBuffer >= 25) {
                   _pendingScanBuffer = 0;
                   _notifyDocsChanged();
@@ -266,7 +319,7 @@ class DocumentManagerService {
     final oldPath = _documents[index].path;
     final oldFile = File(oldPath);
     final String parentDirPath = oldFile.parent.path;
-    final String newPath = '$parentDirPath${Platform.pathSeparator}$newName';
+    final String newPath = p.join(parentDirPath, newName);
 
     try {
       await oldFile.rename(newPath);
@@ -325,6 +378,14 @@ class DocumentManagerService {
     if (!_docsController.isClosed) {
       _docsController.add(List.unmodifiable(_documents));
     }
+  }
+
+  void dispose() {
+    _sub?.cancel();
+    _docsController.close();
+    _scanningController.close();
+    _progressController.close();
+    _externalFileController.close();
   }
 }
 

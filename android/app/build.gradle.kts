@@ -5,8 +5,9 @@ plugins {
 }
 
 android {
-    namespace = "com.example.pdf"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.example.pdf_x"
+    compileSdk = 37 // تم التحديث لتوافق مكتبة مشاركة الملفات
+
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -15,15 +16,15 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.pdf"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "com.example.pdf_x"
+
+        // تعيين الحد الأدنى للإصدار إلى 21 لدعم مكتبات ML Kit ومحركات الـ PDF
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
+
     buildTypes {
         release {
             // Signing with the debug keys for now, so `flutter run --release` works.
@@ -34,7 +35,6 @@ android {
             isShrinkResources = false
         }
     }
-
 }
 
 kotlin {

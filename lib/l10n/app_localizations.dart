@@ -6,12 +6,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_ar.dart';
-import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
-import 'app_localizations_es.dart';
 import 'app_localizations_fr.dart';
 import 'app_localizations_ru.dart';
-import 'app_localizations_zh.dart';
 
 // ignore_for_file: type=lint
 
@@ -100,25 +97,130 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('ar'),
-    Locale('de'),
     Locale('en'),
-    Locale('es'),
     Locale('fr'),
-    Locale('ru'),
-    Locale('zh')
+    Locale('ru')
   ];
 
-  /// No description provided for @appTitle.
+  /// No description provided for @welcome_title.
   ///
   /// In ar, this message translates to:
-  /// **'قارئ المستندات'**
-  String get appTitle;
+  /// **'أهلاً بك'**
+  String get welcome_title;
+
+  /// No description provided for @select_language_desc.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرجاء اختيار لغتك المفضلة'**
+  String get select_language_desc;
+
+  /// No description provided for @continue_button.
+  ///
+  /// In ar, this message translates to:
+  /// **'متابعة'**
+  String get continue_button;
+
+  /// No description provided for @share_error.
+  ///
+  /// In ar, this message translates to:
+  /// **'خطأ في مشاركة الملف'**
+  String get share_error;
+
+  /// No description provided for @jump_to_page.
+  ///
+  /// In ar, this message translates to:
+  /// **'الانتقال إلى صفحة'**
+  String get jump_to_page;
+
+  /// No description provided for @enter_page_number.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل رقم الصفحة'**
+  String get enter_page_number;
+
+  /// No description provided for @cancel.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء'**
+  String get cancel;
+
+  /// No description provided for @invalid_page_number.
+  ///
+  /// In ar, this message translates to:
+  /// **'رقم صفحة غير صالح'**
+  String get invalid_page_number;
+
+  /// No description provided for @go.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتقال'**
+  String get go;
+
+  /// No description provided for @share_file.
+  ///
+  /// In ar, this message translates to:
+  /// **'مشاركة الملف'**
+  String get share_file;
+
+  /// No description provided for @loading_pdf.
+  ///
+  /// In ar, this message translates to:
+  /// **'جاري تحميل ملف الـ PDF...'**
+  String get loading_pdf;
+
+  /// No description provided for @file_read_error.
+  ///
+  /// In ar, this message translates to:
+  /// **'خطأ في قراءة الملف'**
+  String get file_read_error;
+
+  /// No description provided for @previous_page.
+  ///
+  /// In ar, this message translates to:
+  /// **'الصفحة السابقة'**
+  String get previous_page;
+
+  /// No description provided for @next_page.
+  ///
+  /// In ar, this message translates to:
+  /// **'الصفحة التالية'**
+  String get next_page;
+
+  /// No description provided for @openFileError.
+  ///
+  /// In ar, this message translates to:
+  /// **'خطأ في فتح الملف'**
+  String get openFileError;
+
+  /// No description provided for @deleteFile.
+  ///
+  /// In ar, this message translates to:
+  /// **'حذف الملف'**
+  String get deleteFile;
+
+  /// No description provided for @deleteConfirm.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل أنت متأكد من حذف الملف \'{name}\'؟'**
+  String deleteConfirm(String name);
+
+  /// No description provided for @delete.
+  ///
+  /// In ar, this message translates to:
+  /// **'حذف'**
+  String get delete;
 
   /// No description provided for @searchHint.
   ///
   /// In ar, this message translates to:
-  /// **'ابحث باسم الملف...'**
+  /// **'ابحث في المستندات...'**
   String get searchHint;
+
+  /// No description provided for @appTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'PDF X'**
+  String get appTitle;
 
   /// No description provided for @all.
   ///
@@ -126,11 +228,23 @@ abstract class AppLocalizations {
   /// **'الكل'**
   String get all;
 
+  /// No description provided for @filesSuffix.
+  ///
+  /// In ar, this message translates to:
+  /// **'ملفات'**
+  String get filesSuffix;
+
   /// No description provided for @pdf.
   ///
   /// In ar, this message translates to:
   /// **'PDF'**
   String get pdf;
+
+  /// No description provided for @word.
+  ///
+  /// In ar, this message translates to:
+  /// **'Word'**
+  String get word;
 
   /// No description provided for @excel.
   ///
@@ -138,28 +252,40 @@ abstract class AppLocalizations {
   /// **'Excel'**
   String get excel;
 
+  /// No description provided for @ppt.
+  ///
+  /// In ar, this message translates to:
+  /// **'PowerPoint'**
+  String get ppt;
+
   /// No description provided for @txt.
   ///
   /// In ar, this message translates to:
-  /// **'TXT'**
+  /// **'نص'**
   String get txt;
 
-  /// No description provided for @filesSuffix.
+  /// No description provided for @image.
   ///
   /// In ar, this message translates to:
-  /// **'ملف'**
-  String get filesSuffix;
+  /// **'صور'**
+  String get image;
+
+  /// No description provided for @guides.
+  ///
+  /// In ar, this message translates to:
+  /// **'المستكشف'**
+  String get guides;
 
   /// No description provided for @recent.
   ///
   /// In ar, this message translates to:
-  /// **'الأخيرة'**
+  /// **'الأحدث'**
   String get recent;
 
   /// No description provided for @bookmarks.
   ///
   /// In ar, this message translates to:
-  /// **'العلامات المرجعية'**
+  /// **'المفضلة'**
   String get bookmarks;
 
   /// No description provided for @noDocuments.
@@ -171,50 +297,14 @@ abstract class AppLocalizations {
   /// No description provided for @scanNow.
   ///
   /// In ar, this message translates to:
-  /// **'فحص الذاكرة الآن'**
+  /// **'فحص الآن'**
   String get scanNow;
 
-  /// No description provided for @renameFile.
+  /// No description provided for @scanningStorage.
   ///
   /// In ar, this message translates to:
-  /// **'إعادة تسمية الملف'**
-  String get renameFile;
-
-  /// No description provided for @newFileName.
-  ///
-  /// In ar, this message translates to:
-  /// **'اسم الملف الجديد'**
-  String get newFileName;
-
-  /// No description provided for @cancel.
-  ///
-  /// In ar, this message translates to:
-  /// **'إلغاء'**
-  String get cancel;
-
-  /// No description provided for @save.
-  ///
-  /// In ar, this message translates to:
-  /// **'حفظ'**
-  String get save;
-
-  /// No description provided for @deleteFile.
-  ///
-  /// In ar, this message translates to:
-  /// **'حذف الملف'**
-  String get deleteFile;
-
-  /// No description provided for @deleteConfirm.
-  ///
-  /// In ar, this message translates to:
-  /// **'هل أنت متأكد من حذف الملف \"{fileName}\" نهائياً؟'**
-  String deleteConfirm(Object fileName);
-
-  /// No description provided for @delete.
-  ///
-  /// In ar, this message translates to:
-  /// **'حذف'**
-  String get delete;
+  /// **'جاري فحص التخزين...'**
+  String get scanningStorage;
 
   /// No description provided for @open.
   ///
@@ -228,41 +318,83 @@ abstract class AppLocalizations {
   /// **'إعادة تسمية'**
   String get rename;
 
-  /// No description provided for @scanningStorage.
+  /// No description provided for @legacyDocFormatError.
   ///
   /// In ar, this message translates to:
-  /// **'جاري فحص الذاكرة...'**
-  String get scanningStorage;
+  /// **'نسخة ملف Word القديمة (.doc) غير مدعومة للعرض المباشر.'**
+  String get legacyDocFormatError;
 
-  /// No description provided for @fileReadError.
+  /// No description provided for @documentReaderError.
   ///
   /// In ar, this message translates to:
-  /// **'حدث خطأ أثناء قراءة الملف'**
-  String get fileReadError;
+  /// **'عذراً، حدث خطأ أثناء قراءة المستند.'**
+  String get documentReaderError;
 
-  /// No description provided for @fileSavedSuccess.
+  /// No description provided for @emptyTable.
+  ///
+  /// In ar, this message translates to:
+  /// **'الجدول فارغ'**
+  String get emptyTable;
+
+  /// No description provided for @legacyXlsFormatError.
+  ///
+  /// In ar, this message translates to:
+  /// **'نسخة ملف Excel القديمة (.xls) تتطلب الفتح عبر تطبيق خارجي.'**
+  String get legacyXlsFormatError;
+
+  /// No description provided for @openExternalApp.
+  ///
+  /// In ar, this message translates to:
+  /// **'فتح في تطبيق خارجي'**
+  String get openExternalApp;
+
+  /// No description provided for @columnPrefix.
+  ///
+  /// In ar, this message translates to:
+  /// **'عمود'**
+  String get columnPrefix;
+
+  /// No description provided for @renameFile.
+  ///
+  /// In ar, this message translates to:
+  /// **'إعادة تسمية الملف'**
+  String get renameFile;
+
+  /// No description provided for @newFileName.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسم الملف الجديد'**
+  String get newFileName;
+
+  /// No description provided for @save.
+  ///
+  /// In ar, this message translates to:
+  /// **'حفظ'**
+  String get save;
+
+  /// No description provided for @file_saved_success.
   ///
   /// In ar, this message translates to:
   /// **'تم حفظ الملف بنجاح'**
-  String get fileSavedSuccess;
+  String get file_saved_success;
 
-  /// No description provided for @saveError.
+  /// No description provided for @save_error.
   ///
   /// In ar, this message translates to:
-  /// **'حدث خطأ أثناء الحفظ'**
-  String get saveError;
+  /// **'خطأ في حفظ الملف'**
+  String get save_error;
 
-  /// No description provided for @saveChanges.
+  /// No description provided for @save_changes.
   ///
   /// In ar, this message translates to:
   /// **'حفظ التغييرات'**
-  String get saveChanges;
+  String get save_changes;
 
-  /// No description provided for @writeTextHere.
+  /// No description provided for @write_text_here.
   ///
   /// In ar, this message translates to:
   /// **'اكتب النص هنا...'**
-  String get writeTextHere;
+  String get write_text_here;
 
   /// No description provided for @column.
   ///
@@ -270,77 +402,23 @@ abstract class AppLocalizations {
   /// **'عمود'**
   String get column;
 
-  /// No description provided for @emptyFile.
+  /// No description provided for @open_external.
   ///
   /// In ar, this message translates to:
-  /// **'الملف فارغ'**
-  String get emptyFile;
+  /// **'فتح خارجي'**
+  String get open_external;
 
-  /// No description provided for @emptyPage.
+  /// No description provided for @empty_file.
   ///
   /// In ar, this message translates to:
-  /// **'الصفحة فارغة'**
-  String get emptyPage;
+  /// **'ملف فارغ'**
+  String get empty_file;
 
-  /// No description provided for @openExternal.
+  /// No description provided for @empty_page.
   ///
   /// In ar, this message translates to:
-  /// **'فتح باستخدام تطبيق خارجي'**
-  String get openExternal;
-
-  /// No description provided for @shareError.
-  ///
-  /// In ar, this message translates to:
-  /// **'حدث خطأ أثناء المشاركة'**
-  String get shareError;
-
-  /// No description provided for @jumpToPage.
-  ///
-  /// In ar, this message translates to:
-  /// **'الانتقال إلى صفحة'**
-  String get jumpToPage;
-
-  /// No description provided for @enterPageNumber.
-  ///
-  /// In ar, this message translates to:
-  /// **'أدخل رقم الصفحة'**
-  String get enterPageNumber;
-
-  /// No description provided for @go.
-  ///
-  /// In ar, this message translates to:
-  /// **'انتقال'**
-  String get go;
-
-  /// No description provided for @invalidPageNumber.
-  ///
-  /// In ar, this message translates to:
-  /// **'رقم الصفحة غير صحيح'**
-  String get invalidPageNumber;
-
-  /// No description provided for @shareFile.
-  ///
-  /// In ar, this message translates to:
-  /// **'مشاركة الملف'**
-  String get shareFile;
-
-  /// No description provided for @loadingPdf.
-  ///
-  /// In ar, this message translates to:
-  /// **'جاري تحميل ملف PDF...'**
-  String get loadingPdf;
-
-  /// No description provided for @previousPage.
-  ///
-  /// In ar, this message translates to:
-  /// **'الصفحة السابقة'**
-  String get previousPage;
-
-  /// No description provided for @nextPage.
-  ///
-  /// In ar, this message translates to:
-  /// **'الصفحة التالية'**
-  String get nextPage;
+  /// **'صفحة فارغة'**
+  String get empty_page;
 }
 
 class _AppLocalizationsDelegate
@@ -353,15 +431,8 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) => <String>[
-        'ar',
-        'de',
-        'en',
-        'es',
-        'fr',
-        'ru',
-        'zh'
-      ].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['ar', 'en', 'fr', 'ru'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -372,18 +443,12 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   switch (locale.languageCode) {
     case 'ar':
       return AppLocalizationsAr();
-    case 'de':
-      return AppLocalizationsDe();
     case 'en':
       return AppLocalizationsEn();
-    case 'es':
-      return AppLocalizationsEs();
     case 'fr':
       return AppLocalizationsFr();
     case 'ru':
       return AppLocalizationsRu();
-    case 'zh':
-      return AppLocalizationsZh();
   }
 
   throw FlutterError(

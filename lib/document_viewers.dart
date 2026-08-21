@@ -7,45 +7,6 @@ import 'package:open_filex/open_filex.dart';
 import 'l10n/app_localizations.dart';
 
 // ==========================================
-// امتداد مساعدة لفك واستعراض الترجمات بأمان
-// ==========================================
-extension StringTranslationExtension on String {
-  /// جلب النص المترجم أو إرجاع النص الأصلي كخيار احتياطي
-  String tr(BuildContext context) {
-    final loc = AppLocalizations.of(context);
-    if (loc == null) return this;
-
-    // ربط المفاتيح الأساسية بحسب لغة الجهاز الحالية
-    switch (this) {
-      case 'file_read_error':
-        return loc.fileReadError;
-      case 'file_saved_success':
-        return loc.fileSavedSuccess;
-      case 'save_error':
-        return loc.saveError;
-      case 'save_changes':
-        return loc.saveChanges;
-      case 'write_text_here':
-        return loc.writeTextHere;
-      case 'cancel':
-        return loc.cancel;
-      case 'save':
-        return loc.save;
-      case 'column':
-        return loc.column;
-      case 'empty_file':
-        return loc.emptyFile;
-      case 'empty_page':
-        return loc.emptyPage;
-      case 'open_external':
-        return loc.openExternal;
-      default:
-        return this;
-    }
-  }
-}
-
-// ==========================================
 // أدوات مساعدة عامة للتعامل مع الترميزات
 // ==========================================
 String _safeDecodeBytes(List<int> bytes) {
@@ -113,8 +74,9 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final loc = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${'file_read_error'.tr(context)}: $e')),
+          SnackBar(content: Text('${loc.file_read_error}: $e')),
         );
       }
     } finally {
@@ -125,13 +87,14 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
   Future<void> _saveFile() async {
     if (_isSaving) return;
     setState(() => _isSaving = true);
+    final loc = AppLocalizations.of(context)!;
     try {
       final file = File(widget.filePath);
       await file.writeAsString(_controller.text, encoding: utf8);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('file_saved_success'.tr(context)),
+            content: Text(loc.file_saved_success),
             backgroundColor: Colors.green,
           ),
         );
@@ -140,7 +103,7 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${'save_error'.tr(context)}: $e'),
+            content: Text('${loc.save_error}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -158,6 +121,8 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.fileName, style: const TextStyle(fontSize: 16)),
@@ -169,7 +134,7 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
           )
               : IconButton(
             icon: const Icon(Icons.save),
-            tooltip: 'save_changes'.tr(context),
+            tooltip: loc.save_changes,
             onPressed: _saveFile,
           ),
         ],
@@ -185,7 +150,7 @@ class _TxtViewerScreenState extends State<TxtViewerScreen> {
           style: const TextStyle(fontSize: 15, height: 1.6),
           decoration: InputDecoration(
             border: InputBorder.none,
-            hintText: 'write_text_here'.tr(context),
+            hintText: loc.write_text_here,
           ),
         ),
       ),
@@ -236,6 +201,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
   }
 
   Future<void> _loadExcelFile() async {
+    final loc = AppLocalizations.of(context)!;
     try {
       final file = File(widget.filePath);
       final bytes = await file.readAsBytes();
@@ -298,14 +264,14 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
       if (mounted) {
         setState(() {
           _showExternalOpen = true;
-          _errorMessage = 'file_read_error'.tr(context);
+          _errorMessage = loc.file_read_error;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _showExternalOpen = true;
-          _errorMessage = '${'file_read_error'.tr(context)}: $e';
+          _errorMessage = '${loc.file_read_error}: $e';
         });
       }
     } finally {
@@ -389,6 +355,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
     if (_excel == null || _isSaving) return;
 
     setState(() => _isSaving = true);
+    final loc = AppLocalizations.of(context)!;
     try {
       final fileBytes = _excel!.save();
       if (fileBytes != null) {
@@ -397,7 +364,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('file_saved_success'.tr(context)),
+              content: Text(loc.file_saved_success),
               backgroundColor: Colors.green,
             ),
           );
@@ -407,7 +374,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${'save_error'.tr(context)}: $e'),
+            content: Text('${loc.save_error}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -419,11 +386,12 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
 
   void _editCellDialog(String sheetName, int colIndex, int rowIndex, String currentValue) {
     final textController = TextEditingController(text: currentValue);
+    final loc = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('${'column'.tr(context)} ${colIndex + 1}'),
+        title: Text('${loc.column} ${colIndex + 1}'),
         content: TextField(
           controller: textController,
           autofocus: true,
@@ -435,7 +403,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
               textController.dispose();
               Navigator.pop(dialogContext);
             },
-            child: Text('cancel'.tr(context)),
+            child: Text(loc.cancel),
           ),
           ElevatedButton(
             onPressed: () {
@@ -454,7 +422,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
               textController.dispose();
               Navigator.pop(dialogContext);
             },
-            child: Text('save'.tr(context)),
+            child: Text(loc.save),
           ),
         ],
       ),
@@ -463,6 +431,8 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.fileName, style: const TextStyle(fontSize: 16)),
@@ -475,7 +445,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
             )
                 : IconButton(
               icon: const Icon(Icons.save),
-              tooltip: 'save_changes'.tr(context),
+              tooltip: loc.save_changes,
               onPressed: _saveExcelFile,
             ),
         ],
@@ -485,6 +455,8 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
   }
 
   Widget _buildBody() {
+    final loc = AppLocalizations.of(context)!;
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -508,7 +480,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
                 ElevatedButton.icon(
                   onPressed: _openWithExternalApp,
                   icon: const Icon(Icons.open_in_new),
-                  label: Text('open_external'.tr(context)),
+                  label: Text(loc.open_external),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   ),
@@ -535,7 +507,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
           child: DataTable(
             columns: List.generate(
               maxCols,
-                  (index) => DataColumn(label: Text('${'column'.tr(context)} ${index + 1}')),
+                  (index) => DataColumn(label: Text('${loc.column} ${index + 1}')),
             ),
             rows: displayRows.map((row) {
               return DataRow(
@@ -552,7 +524,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
 
     final tables = _excel?.tables ?? {};
     if (tables.isEmpty) {
-      return Center(child: Text('empty_file'.tr(context)));
+      return Center(child: Text(loc.empty_file));
     }
 
     return DefaultTabController(
@@ -568,7 +540,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
               children: tables.keys.map((sheetName) {
                 final table = tables[sheetName];
                 if (table == null || table.rows.isEmpty) {
-                  return Center(child: Text('empty_page'.tr(context)));
+                  return Center(child: Text(loc.empty_page));
                 }
 
                 final totalRows = table.rows.length;
@@ -581,7 +553,7 @@ class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
                     child: DataTable(
                       columns: List.generate(
                         table.maxColumns,
-                            (index) => DataColumn(label: Text('${'column'.tr(context)} ${index + 1}')),
+                            (index) => DataColumn(label: Text('${loc.column} ${index + 1}')),
                       ),
                       rows: List.generate(renderCount, (rowIndex) {
                         final row = table.rows[rowIndex];

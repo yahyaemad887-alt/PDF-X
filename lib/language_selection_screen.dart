@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'l10n/app_localizations.dart';
 import 'ui.dart';
 
 class LanguageSelectionScreen extends StatefulWidget {
@@ -17,11 +18,9 @@ class LanguageSelectionScreen extends StatefulWidget {
 }
 
 class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
-  // كود اللغة الافتراضي
   String _selectedLocale = 'ar';
 
-  // قائمة اللغات الـ 7 المدعومة بالتطبيق
-  final List<Map<String, String>> _languages = [
+  static const List<Map<String, String>> _languages = [
     {'code': 'ar', 'name': 'العربية', 'native': 'Arabic'},
     {'code': 'en', 'name': 'English', 'native': 'الإنجليزية'},
     {'code': 'fr', 'name': 'Français', 'native': 'الفرنسية'},
@@ -31,7 +30,6 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     {'code': 'zh', 'name': '中文', 'native': 'الصينية'},
   ];
 
-  /// حفظ اللغة المختارة وعلامة إتمام الترحيب في SharedPreferences
   Future<void> _saveLanguageAndProceed() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -40,7 +38,6 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
 
       if (!mounted) return;
 
-      // الانتقال إلى الشاشة الرئيسية واستبدال شاشة الترحيب
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -57,11 +54,12 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
     final bool isDark = widget.isDarkMode;
-    final Color primaryColor = const Color(0xFF1E88E5);
-    final Color bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA);
-    final Color cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final Color textColor = isDark ? Colors.white : Colors.black87;
+    const primaryColor = Color(0xFF1E88E5);
+    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA);
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -73,7 +71,6 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
             children: [
               const SizedBox(height: 20),
 
-              // أيقونة الترحيب والترويسة
               Center(
                 child: Container(
                   padding: const EdgeInsets.all(16),
@@ -81,14 +78,14 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                     color: primaryColor.withOpacity(0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.language, size: 48, color: primaryColor),
+                  child: const Icon(Icons.language, size: 48, color: primaryColor),
                 ),
               ),
               const SizedBox(height: 20),
 
               Center(
                 child: Text(
-                  'مرحباً بك / Welcome',
+                  loc.welcome_title,
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -99,7 +96,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  'اختر لغتك المفضلة للمتابعة\nSelect your preferred language',
+                  loc.select_language_desc,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -110,7 +107,6 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
 
               const SizedBox(height: 28),
 
-              // قائمة اختيار اللغات
               Expanded(
                 child: ListView.separated(
                   itemCount: _languages.length,
@@ -178,7 +174,6 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
 
               const SizedBox(height: 16),
 
-              // زر المتابعة
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -192,9 +187,9 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                     elevation: 0,
                   ),
                   onPressed: _saveLanguageAndProceed,
-                  child: const Text(
-                    'متابعة / Continue',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  child: Text(
+                    loc.continue_button,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

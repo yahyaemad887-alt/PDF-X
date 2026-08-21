@@ -1,16 +1,20 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- الصلاحيات العامة لقراءة والكتابة في التخزين (للإصدارات القديمة حتى Android 10) -->
+    <!-- صلاحية الكاميرا في حال التقاط صور للـ OCR -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- الصلاحيات العامة لقراءة والكتابة في التخزين (حتى Android 10) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
 
-    <!-- الصلاحيات الخاصة بقراءة وسائط الوسائط (صور وفيديوهات ومستندات) للإصدارات الحديثة (Android 13+) -->
+    <!-- الصلاحيات الخاصة بملفات الوسائط (Android 13+) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
 
-    <!-- صلاحية الوصول الكامل لجميع الملفات (مطلوبة لتطبيق مستندات وفحص شامل مثل اللي برمجناه - Android 11+) -->
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+    <!-- صلاحية الوصول الشامل للملفات (Android 11+) -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage"/>
 
     <application
         android:label="PDF X"
@@ -30,12 +34,30 @@
 
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
-                android:resource="@style/NormalTheme"
-                />
+                android:resource="@style/NormalTheme" />
+
+            <!-- مشغل التطبيق الرئيسي -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- استقبال وفتح جميع أنواع الملفات المدعومة (PDF, Word, Excel, Text) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.EDIT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/pdf" />
+                <data android:mimeType="application/msword" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                <data android:mimeType="application/vnd.ms-excel" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
         </activity>
 
         <meta-data
@@ -43,10 +65,16 @@
             android:value="2" />
     </application>
 
+    <!-- استعلامات فتح وتمرير الملفات للتطبيقات الأخرى (Android 11+) -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="*/*" />
         </intent>
     </queries>
 </manifest>

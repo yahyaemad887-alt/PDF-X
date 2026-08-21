@@ -28,7 +28,7 @@ dependencies:
   file_selector: ^1.0.3
   open_filex: ^4.5.0
   shared_preferences: ^2.3.2
-
+  receive_sharing_intent: ^1.8.4
   # --- محركات المعالجة والـ PDF والملفات ---
   pdf: ^3.11.1
   printing: ^5.13.2
@@ -38,7 +38,7 @@ dependencies:
   excel: ^4.0.6
   in_app_file_view: ^1.1.0
   archive: ^3.6.1
-
+  app_links: ^6.3.2
   # --- الذكاء الاصطناعي والـ OCR المحلي (On-Device ML) ---
   google_mlkit_text_recognition: ^0.13.0
   google_mlkit_commons: ^0.8.0

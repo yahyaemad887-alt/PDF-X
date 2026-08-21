@@ -1,23 +1,42 @@
-# 🚀 PDF X - High-Performance Document & Sheet Viewer
+# 📄 PDF X - Advanced Document Reader & Explorer
 
-<p align="center">
-  <img src="assets/icon/app_icon.png" alt="PDF X Logo" width="140" height="140"/>
-</p>
+**PDF X** is a high-performance, lightweight, and feature-rich document management and viewing application built with Flutter. It is designed to outperform traditional document readers by offering blazing-fast startup times, multi-language support, and an integrated native file explorer.
 
-**PDF X** is an ultra-fast, lightweight, production-ready Flutter application built for seamless viewing, parsing, and management of PDF documents and Excel spreadsheets (`.xlsx` / `.xls`).
+---
 
-Engineered with performance-first architecture, **PDF X** combines native processing power with advanced UI rendering to deliver near-instant launch times and an ultra-compact binary footprint **(~30 MB)**.
+## ✨ Key Features & Performance
+
+* **🚀 Lightning Fast Startup:** Opens instantly in just **1 second**, leaving heavy competitors behind.
+* **📦 Lightweight Build:** Optimized architecture with a tiny footprint of only **60 MB**, ensuring high performance on all devices.
+* **🌍 Multi-Language Support:** Fully localized in **4 major languages**:
+  * Arabic (العربية)
+  * English
+  * French (Français)
+  * Russian (Русский)
+* **📂 Integrated File Explorer:** Browse your device storage directly within the app to locate and open supported documents seamlessly.
+* **📑 Multi-Format Support:** Fast parsing and viewing for **PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), Text (.txt), and Images**.
+* **⭐ Bookmarks & Search:** Easily bookmark important documents and filter them instantly using the powerful built-in search engine.
+* **🌓 Dark & Light Themes:** Built-in seamless theme switching tailored for comfortable reading day or night.
 
 ---
 
 ## 📱 Screenshots
 
 <p align="center">&nbsp;&nbsp;&nbsp;
-  <img src="assets/screenshots/b.jpg" width="28%" alt="B" />&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/screenshots/a.jpg" width="28%" alt="Screenshot A" />&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/screenshots/b.jpg" width="28%" alt="Screenshot B" />&nbsp;&nbsp;&nbsp;&nbsp;
   <img src="assets/icon/app_icon.png" width="150" alt="App Icon">
- <img src="assets/screenshots/c.jpg" width="28%" alt="C" />&nbsp;&nbsp;&nbsp;&nbsp;
- <img src="assets/screenshots/d.jpg" width="28%" alt="D" />&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/screenshots/c.jpg" width="28%" alt="Screenshot C" />&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/screenshots/d.jpg" width="28%" alt="Screenshot D" />&nbsp;&nbsp;&nbsp;&nbsp;
 </p>
+
+---
+
+## 🛠️ Tech Stack
+
+* **Framework:** Flutter (Dart)
+* **State Management & UI Architecture:** Clean and optimized reactive components
+* **Key Dependencies:** `open_filex`, `excel`, `archive`, `shared_preferences`, `receive_sharing_intent`
 
 ---
 
@@ -26,52 +45,3 @@ Engineered with performance-first architecture, **PDF X** combines native proces
 * **Developer Name:** Yahia Emad (يحيى عماد)
 * **Phone / WhatsApp:** [+20 155 342 7179](https://wa.me/201553427179)
 * **Specialization:** Mobile Software Engineering (Flutter & Native Android Integration)
-
----
-
-## ✨ Key Features & Highlights
-
-### ⚡ Ultra-Fast Performance & Compact Size
-- **Blazing Fast Startup:** Instant launch and rendering with zero lag or render blocking.
-- **Optimized Binary Size:** Leverages `--split-per-abi` architecture targeting `arm64-v8a` to reduce APK footprint down to **~30 MB**.
-- **Memory Optimized:** Efficient resource management ensuring stable performance without crash-on-launch issues under high load.
-
-### 📄 Advanced PDF & Document Engine
-- **Instant PDF Rendering:** Smooth page navigation, zooming, and high-resolution rendering powered by `pdfx` and native views.
-- **On-Device OCR Capabilities:** Integrated Google ML Kit Text Recognition for intelligent text processing on-device.
-
-### 📊 Excel & Spreadsheet Integration
-- **Direct Excel Parsing:** Native parsing and multi-tab rendering for modern `.xlsx` sheets using structured data tables.
-- **Legacy Format Support:** Intelligent external fallback system for legacy `.xls` files.
-
-### 🌍 Comprehensive Localization (7 Languages)
-Full dynamic multi-language localization system supporting seamless switching across 7 languages with right-to-left (RTL) and left-to-right (LTR) UI alignment:
-- 🇪🇬 **Arabic** (العربية)
-- 🇺🇸 **English**
-- 🇫🇷 **French** (Français)
-- 🇪🇸 **Spanish** (Español)
-- 🇩🇪 **German** (Deutsch)
-- 🇷🇺 **Russian** (Русский)
-- 🇨🇳 **Chinese** (中文)
-
----
-
-## 🛠️ Tech Stack & Architecture
-
-- **Framework:** Flutter (Dart SDK >= 3.2.0)
-- **Architecture:** Clean Modular UI/Logic Isolation (`main.dart` -> `ui.dart`)
-- **Key Dependencies:**
-  - `pdfx` & `flutter_pdfview` - Native PDF rendering engines
-  - `excel` - High-performance spreadsheet parser
-  - `google_mlkit_text_recognition` - On-Device Machine Learning OCR
-  - `flutter_localizations` & `intl` - Multi-language translation engine
-  - `open_filex` & `share_plus` - System-level file invocation & sharing handlers
-
----
-
-## 🚀 Building & Deployment
-
-### Run Locally
-```bash
-flutter pub get
-flutter run

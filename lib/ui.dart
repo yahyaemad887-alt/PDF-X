@@ -1,17 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:archive/archive.dart';
-import 'package:excel/excel.dart' hide Border;
+import 'package:excel/excel.dart' hide Border, Color;
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'l10n/app_localizations.dart';
 import 'services.dart';
 import 'pdf_viewer_screen.dart';
 import 'document_viewers.dart';
-import 'package:excel/excel.dart' hide Border, Color; // تجنب التعارض مع عناصر الواجهة
-import 'package:open_filex/open_filex.dart';
 
 /// الجذر الرئيسي للتطبيق لتجميع التكوينات والإعدادات
 class PdfToolsApp extends StatefulWidget {
@@ -148,11 +149,8 @@ class _OnboardingLanguageScreenState extends State<OnboardingLanguageScreen> {
   final List<Map<String, String>> _supportedLanguages = const [
     {'code': 'ar', 'title': 'العربية', 'subtitle': 'Arabic'},
     {'code': 'en', 'title': 'English', 'subtitle': 'الإنجليزية'},
-    {'code': 'de', 'title': 'Deutsch', 'subtitle': 'الألمانية'},
-    {'code': 'es', 'title': 'Español', 'subtitle': 'الإسبانية'},
     {'code': 'fr', 'title': 'Français', 'subtitle': 'الفرنسية'},
     {'code': 'ru', 'title': 'Русский', 'subtitle': 'الروسية'},
-    {'code': 'zh', 'title': '中文', 'subtitle': 'الصينية'},
   ];
 
   @override
@@ -302,7 +300,8 @@ class MainDashboardView extends StatefulWidget {
   State<MainDashboardView> createState() => _MainDashboardViewState();
 }
 
-class _MainDashboardViewState extends State<MainDashboardView> with SingleTickerProviderStateMixin {
+class _MainDashboardViewState extends State<MainDashboardView>
+    with SingleTickerProviderStateMixin {
   final DocumentManagerService _docManager = DocumentManagerService();
 
   late TabController _tabController;
@@ -331,9 +330,10 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
       if (mounted) setState(() => _allDocuments = docs);
     });
 
-    _scanningSubscription = _docManager.scanningStateStream.listen((isScanning) {
-      if (mounted) setState(() => _isScanning = isScanning);
-    });
+    _scanningSubscription =
+        _docManager.scanningStateStream.listen((isScanning) {
+          if (mounted) setState(() => _isScanning = isScanning);
+        });
 
     _progressSubscription = _docManager.progressStream.listen((progress) {
       if (mounted) setState(() => _scanProgressMessage = progress);
@@ -341,15 +341,90 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
 
     _allDocuments = _docManager.currentDocuments;
 
+    // استقبال الملفات المفتوحة عبر مستكشف الملفات (Open With)
+    _initFileSharingListener();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestPermissionsAndInit();
     });
   }
 
+  void _initFileSharingListener() {
+    // لو التطبيق تم فتحه لأول مرة من خلال ملف خارجي
+    ReceiveSharingIntent.instance.getInitialMedia().then((value) {
+      if (value.isNotEmpty) {
+        final filePath = value.first.path;
+        _handleIncomingFile(filePath);
+        ReceiveSharingIntent.instance.reset();
+      }
+    });
+
+    // لو التطبيق كان يعمل في الخلفية وتم فتح ملف له
+    ReceiveSharingIntent.instance.getMediaStream().listen((value) {
+      if (value.isNotEmpty) {
+        final filePath = value.first.path;
+        _handleIncomingFile(filePath);
+      }
+    }, onError: (err) {
+      debugPrint("Sharing Intent Error: $err");
+    });
+  }
+
+  Future<void> _handleIncomingFile(String path) async {
+    await Future.delayed(const Duration(milliseconds: 600));
+    final file = File(path);
+
+    int fileSize = 0;
+    DateTime fileMod = DateTime.now();
+
+    try {
+      if (await file.exists()) {
+        fileSize = await file.length();
+        fileMod = await file.lastModified();
+      }
+    } catch (e) {
+      debugPrint("Error reading file stats: $e");
+    }
+
+    final name = path.split('/').last;
+    final extension = name.contains('.') ? name.split('.').last.toLowerCase() : '';
+
+    DocumentCategory category;
+    if (extension == 'pdf') {
+      category = DocumentCategory.pdf;
+    } else if (['doc', 'docx'].contains(extension)) {
+      category = DocumentCategory.word;
+    } else if (['xls', 'xlsx'].contains(extension)) {
+      category = DocumentCategory.excel;
+    } else if (extension == 'txt') {
+      category = DocumentCategory.txt;
+    } else if (['png', 'jpg', 'jpeg', 'webp'].contains(extension)) {
+      category = DocumentCategory.image;
+    } else if (['ppt', 'pptx'].contains(extension)) {
+      category = DocumentCategory.ppt;
+    } else {
+      category = DocumentCategory.guides;
+    }
+
+    final docItem = DocumentItem(
+      id: path,
+      name: name,
+      path: path,
+      sizeInBytes: fileSize,
+      lastModified: fileMod,
+      category: category,
+    );
+
+    if (mounted) {
+      _openDocument(docItem);
+    }
+  }
+
   Future<void> _requestPermissionsAndInit() async {
     bool hasPermission = false;
 
-    if (await Permission.manageExternalStorage.isGranted || await Permission.storage.isGranted) {
+    if (await Permission.manageExternalStorage.isGranted ||
+        await Permission.storage.isGranted) {
       hasPermission = true;
     } else {
       final status = await Permission.manageExternalStorage.request();
@@ -382,7 +457,8 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => PdfViewerScreen(filePath: doc.path, fileName: doc.name),
+            builder: (context) =>
+                PdfViewerScreen(filePath: doc.path, fileName: doc.name),
           ),
         );
         break;
@@ -391,7 +467,8 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => WordViewerScreen(filePath: doc.path, fileName: doc.name),
+            builder: (context) =>
+                WordViewerScreen(filePath: doc.path, fileName: doc.name),
           ),
         );
         break;
@@ -400,7 +477,8 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ExcelViewerScreen(filePath: doc.path, fileName: doc.name),
+            builder: (context) =>
+                ExcelViewerScreen(filePath: doc.path, fileName: doc.name),
           ),
         );
         break;
@@ -409,7 +487,8 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => TxtViewerScreen(filePath: doc.path, fileName: doc.name),
+            builder: (context) =>
+                TxtViewerScreen(filePath: doc.path, fileName: doc.name),
           ),
         );
         break;
@@ -418,7 +497,8 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ImageViewerScreen(filePath: doc.path, fileName: doc.name),
+            builder: (context) =>
+                ImageViewerScreen(filePath: doc.path, fileName: doc.name),
           ),
         );
         break;
@@ -428,9 +508,10 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
       default:
         final result = await OpenFilex.open(doc.path);
         if (result.type != ResultType.done && mounted) {
+          final loc = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('يرجى تثبيت تطبيق يمتلك صلاحية قراءة الملف (${result.message})'),
+              content: Text('${loc.openFileError}: ${result.message}'),
             ),
           );
         }
@@ -468,9 +549,57 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
               Navigator.pop(dialogContext);
               await _docManager.deleteDocument(doc.id);
             },
-            child: Text(loc.delete, style: const TextStyle(color: Colors.white)),
+            child:
+            Text(loc.delete, style: const TextStyle(color: Colors.white)),
           ),
         ],
+      ),
+    );
+  }
+
+  // نافذة اختيار اللغة من أيقونة الإعدادات العلوية
+  void _showLanguageDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('اختر لغة التطبيق / Select Language'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Text('🇪🇬', style: TextStyle(fontSize: 24)),
+              title: const Text('العربية'),
+              onTap: () async {
+                Navigator.pop(dialogContext);
+                await PdfToolsApp.setLocale(context, const Locale('ar'));
+              },
+            ),
+            ListTile(
+              leading: const Text('🇺🇸', style: TextStyle(fontSize: 24)),
+              title: const Text('English'),
+              onTap: () async {
+                Navigator.pop(dialogContext);
+                await PdfToolsApp.setLocale(context, const Locale('en'));
+              },
+            ),
+            ListTile(
+              leading: const Text('🇫🇷', style: TextStyle(fontSize: 24)),
+              title: const Text('Français'),
+              onTap: () async {
+                Navigator.pop(dialogContext);
+                await PdfToolsApp.setLocale(context, const Locale('fr'));
+              },
+            ),
+            ListTile(
+              leading: const Text('🇷🇺', style: TextStyle(fontSize: 24)),
+              title: const Text('Русский'),
+              onTap: () async {
+                Navigator.pop(dialogContext);
+                await PdfToolsApp.setLocale(context, const Locale('ru'));
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -478,8 +607,10 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
-    final Color bgColor = widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFF8F9FA);
-    final Color cardBgColor = widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
+    final Color bgColor =
+    widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFF8F9FA);
+    final Color cardBgColor =
+    widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
     final Color textColor = widget.isDarkMode ? Colors.white : Colors.black87;
 
     final stats = _docManager.getStorageStats();
@@ -503,6 +634,18 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
       appBar: AppBar(
         backgroundColor: cardBgColor,
         elevation: 0,
+        leading: _isSearchActive
+            ? IconButton(
+          icon: Icon(Icons.arrow_back, color: textColor),
+          onPressed: () {
+            setState(() {
+              _isSearchActive = false;
+              _searchQuery = '';
+              _searchController.clear();
+            });
+          },
+        )
+            : null,
         title: _isSearchActive
             ? TextField(
           controller: _searchController,
@@ -515,23 +658,25 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
           ),
           onChanged: (val) => setState(() => _searchQuery = val),
         )
-            : Text(
-          loc.appTitle,
-          style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 20),
+            : IconButton(
+          icon: const Icon(Icons.settings, color: Color(0xFF2962FF), size: 28),
+          tooltip: 'تغيير لغة التطبيق / Change Language',
+          onPressed: () => _showLanguageDialog(context),
         ),
         actions: [
+          if (!_isSearchActive)
+            IconButton(
+              icon: Icon(Icons.search, color: textColor, size: 26),
+              onPressed: () {
+                setState(() {
+                  _isSearchActive = true;
+                });
+              },
+            ),
           IconButton(
-            icon: Icon(_isSearchActive ? Icons.close : Icons.search, color: textColor, size: 26),
-            onPressed: () {
-              setState(() {
-                _isSearchActive = !_isSearchActive;
-                _searchQuery = '';
-                _searchController.clear();
-              });
-            },
-          ),
-          IconButton(
-            icon: Icon(widget.isDarkMode ? Icons.light_mode : Icons.dark_mode, color: textColor),
+            icon: Icon(
+                widget.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                color: textColor),
             onPressed: widget.onThemeToggle,
           ),
           const SizedBox(width: 8),
@@ -547,7 +692,8 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
                   SliverToBoxAdapter(
                     child: Container(
                       color: cardBgColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 12.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10.0, vertical: 12.0),
                       child: GridView.count(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -571,7 +717,7 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
                             category: DocumentCategory.pdf,
                           ),
                           _buildGridItem(
-                            'Word',
+                            loc.word,
                             '${stats.categoryCounts[DocumentCategory.word] ?? 0} ${loc.filesSuffix}',
                             Icons.description,
                             const Color(0xFF1E88E5),
@@ -585,7 +731,7 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
                             category: DocumentCategory.excel,
                           ),
                           _buildGridItem(
-                            'PPT',
+                            loc.ppt,
                             '${stats.categoryCounts[DocumentCategory.ppt] ?? 0} ${loc.filesSuffix}',
                             Icons.slideshow,
                             const Color(0xFFFB8C00),
@@ -599,18 +745,27 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
                             category: DocumentCategory.txt,
                           ),
                           _buildGridItem(
-                            'صورة',
+                            loc.image,
                             '${stats.categoryCounts[DocumentCategory.image] ?? 0} ${loc.filesSuffix}',
                             Icons.image,
                             const Color(0xFFFFB300),
                             category: DocumentCategory.image,
                           ),
+                          // كارد الجوديز / Guides لفتح مستكشف الملفات الحقيقي
                           _buildGridItem(
-                            'الدلائل',
-                            '${stats.totalUsedFormatted} / ${stats.totalCapacityFormatted}',
-                            Icons.find_in_page,
+                            loc.guides,
+                            'تصفح الملفات',
+                            Icons.folder_open,
                             const Color(0xFF0288D1),
                             category: DocumentCategory.guides,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const FileExplorerScreen(),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -660,7 +815,9 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
                           const CircularProgressIndicator(),
                           const SizedBox(height: 16),
                           Text(
-                            _scanProgressMessage.isNotEmpty ? _scanProgressMessage : loc.scanningStorage,
+                            _scanProgressMessage.isNotEmpty
+                                ? _scanProgressMessage
+                                : loc.scanningStorage,
                             style: TextStyle(color: textColor),
                           ),
                         ],
@@ -687,7 +844,9 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
               const SizedBox(height: 12),
               Text(
                 loc.noDocuments,
-                style: TextStyle(color: widget.isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                style: TextStyle(
+                    color:
+                    widget.isDarkMode ? Colors.grey[400] : Colors.grey[600]),
               ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
@@ -704,7 +863,8 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: docs.length,
-      separatorBuilder: (context, index) => const Divider(height: 1, indent: 16, endIndent: 16),
+      separatorBuilder: (context, index) =>
+      const Divider(height: 1, indent: 16, endIndent: 16),
       itemBuilder: (context, index) {
         final doc = docs[index];
         return ListTile(
@@ -714,22 +874,29 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
               color: _getCategoryColor(doc.category).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(_getCategoryIcon(doc.category), color: _getCategoryColor(doc.category), size: 24),
+            child: Icon(_getCategoryIcon(doc.category),
+                color: _getCategoryColor(doc.category), size: 24),
           ),
           title: Text(
             doc.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontWeight: FontWeight.w600, color: widget.isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: widget.isDarkMode ? Colors.white : Colors.black87),
           ),
-          subtitle: Text('${doc.formattedSize} • ${_formatDate(doc.lastModified)}', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+          subtitle: Text(
+              '${doc.formattedSize} • ${_formatDate(doc.lastModified)}',
+              style: TextStyle(fontSize: 11, color: Colors.grey[500])),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
                 icon: Icon(
                   doc.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                  color: doc.isBookmarked ? const Color(0xFF2962FF) : Colors.grey[400],
+                  color: doc.isBookmarked
+                      ? const Color(0xFF2962FF)
+                      : Colors.grey[400],
                 ),
                 onPressed: () => _docManager.toggleBookmark(doc.id),
               ),
@@ -743,7 +910,10 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
                 itemBuilder: (context) => [
                   PopupMenuItem(value: 'open', child: Text(loc.open)),
                   PopupMenuItem(value: 'rename', child: Text(loc.rename)),
-                  PopupMenuItem(value: 'delete', child: Text(loc.delete, style: const TextStyle(color: Colors.red))),
+                  PopupMenuItem(
+                      value: 'delete',
+                      child: Text(loc.delete,
+                          style: const TextStyle(color: Colors.red))),
                 ],
               ),
             ],
@@ -754,15 +924,19 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
     );
   }
 
-  Widget _buildGridItem(String title, String subtitle, IconData icon, Color color, {required DocumentCategory category}) {
-    final bool isSelected = _selectedCategory == category;
+  Widget _buildGridItem(
+      String title, String subtitle, IconData icon, Color color,
+      {required DocumentCategory category, VoidCallback? onTap}) {
+    final bool isSelected = _selectedCategory == category && onTap == null;
     return InkWell(
-      onTap: () => setState(() => _selectedCategory = category),
+      onTap: onTap ?? () => setState(() => _selectedCategory = category),
       borderRadius: BorderRadius.circular(14),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          border: isSelected ? Border.all(color: const Color(0xFF2962FF), width: 1.5) : null,
+          border: isSelected
+              ? Border.all(color: const Color(0xFF2962FF), width: 1.5)
+              : null,
         ),
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
         child: Column(
@@ -804,31 +978,51 @@ class _MainDashboardViewState extends State<MainDashboardView> with SingleTicker
 
   Color _getCategoryColor(DocumentCategory category) {
     switch (category) {
-      case DocumentCategory.pdf: return const Color(0xFFE53935);
-      case DocumentCategory.excel: return const Color(0xFF43A047);
-      case DocumentCategory.word: return const Color(0xFF1E88E5);
-      case DocumentCategory.ppt: return const Color(0xFFFB8C00);
-      case DocumentCategory.txt: return const Color(0xFF5C6BC0);
-      case DocumentCategory.image: return const Color(0xFFFFB300);
-      case DocumentCategory.guides: return const Color(0xFF0288D1);
-      default: return const Color(0xFF1976D2);
+      case DocumentCategory.pdf:
+        return const Color(0xFFE53935);
+      case DocumentCategory.excel:
+        return const Color(0xFF43A047);
+      case DocumentCategory.word:
+        return const Color(0xFF1E88E5);
+      case DocumentCategory.ppt:
+        return const Color(0xFFFB8C00);
+      case DocumentCategory.txt:
+        return const Color(0xFF5C6BC0);
+      case DocumentCategory.image:
+        return const Color(0xFFFFB300);
+      case DocumentCategory.guides:
+        return const Color(0xFF0288D1);
+      default:
+        return const Color(0xFF1976D2);
     }
   }
 
   IconData _getCategoryIcon(DocumentCategory category) {
     switch (category) {
-      case DocumentCategory.pdf: return Icons.picture_as_pdf;
-      case DocumentCategory.excel: return Icons.table_chart;
-      case DocumentCategory.word: return Icons.description;
-      case DocumentCategory.ppt: return Icons.slideshow;
-      case DocumentCategory.txt: return Icons.article;
-      case DocumentCategory.image: return Icons.image;
-      case DocumentCategory.guides: return Icons.find_in_page;
-      default: return Icons.folder;
+      case DocumentCategory.pdf:
+        return Icons.picture_as_pdf;
+      case DocumentCategory.excel:
+        return Icons.table_chart;
+      case DocumentCategory.word:
+        return Icons.description;
+      case DocumentCategory.ppt:
+        return Icons.slideshow;
+      case DocumentCategory.txt:
+        return Icons.article;
+      case DocumentCategory.image:
+        return Icons.image;
+      case DocumentCategory.guides:
+        return Icons.find_in_page;
+      default:
+        return Icons.folder;
     }
   }
 
-  String _formatDate(DateTime date) => '${date.year}/${date.month}/${date.day}';
+  String _formatDate(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}/$month/$day';
+  }
 }
 
 /// فئة مساعدة لتثبيت الـ TabBar داخل NestedScrollView
@@ -839,7 +1033,8 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   _SliverAppBarDelegate(this.tabBar, {required this.backgroundColor});
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
       color: backgroundColor,
       child: tabBar,
@@ -854,314 +1049,15 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
-    return oldDelegate.backgroundColor != backgroundColor || oldDelegate.tabBar != tabBar;
+    return oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.tabBar != tabBar;
   }
 }
 
-/// شاشة عرض المستندات المصورة
-class ImageViewerScreen extends StatelessWidget {
-  final String filePath;
-  final String fileName;
-
-  const ImageViewerScreen({
-    super.key,
-    required this.filePath,
-    required this.fileName,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: Text(fileName, style: const TextStyle(color: Colors.white, fontSize: 16)),
-      ),
-      body: Center(
-        child: InteractiveViewer(
-          minScale: 0.5,
-          maxScale: 4.0,
-          child: Image.file(
-            File(filePath),
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => const Center(
-              child: Text('تعذر تحميل الصورة', style: TextStyle(color: Colors.white)),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// شاشة عرض مستندات الورد (.docx) داخل التطبيق
-class WordViewerScreen extends StatefulWidget {
-  final String filePath;
-  final String fileName;
-
-  const WordViewerScreen({
-    super.key,
-    required this.filePath,
-    required this.fileName,
-  });
-
-  @override
-  State<WordViewerScreen> createState() => _WordViewerScreenState();
-}
-
-class _WordViewerScreenState extends State<WordViewerScreen> {
-  List<String> _paragraphs = [];
-  bool _isLoading = true;
-  String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _parseWordDocument();
-  }
-
-  Future<void> _parseWordDocument() async {
-    try {
-      final bytes = await File(widget.filePath).readAsBytes();
-      final archive = ZipDecoder().decodeBytes(bytes);
-
-      ArchiveFile? docXmlFile;
-      for (final file in archive) {
-        if (file.name == 'word/document.xml') {
-          docXmlFile = file;
-          break;
-        }
-      }
-
-      if (docXmlFile != null) {
-        final content = String.fromCharCodes(docXmlFile.content as List<int>);
-        final regExpP = RegExp(r'<w:p[\s>].*?</w:p>');
-        final regExpT = RegExp(r'<w:t[\s>](.*?)</w:t>');
-
-        List<String> extractedText = [];
-        for (final pMatch in regExpP.allMatches(content)) {
-          final pText = pMatch.group(0) ?? '';
-          final textBuffer = StringBuffer();
-          for (final tMatch in regExpT.allMatches(pText)) {
-            final rawVal = tMatch.group(1) ?? '';
-            final cleanVal = rawVal
-                .replaceAll('&lt;', '<')
-                .replaceAll('&gt;', '>')
-                .replaceAll('&amp;', '&')
-                .replaceAll('&quot;', '"')
-                .replaceAll('&apos;', "'");
-            textBuffer.write(cleanVal);
-          }
-          if (textBuffer.isNotEmpty) {
-            extractedText.add(textBuffer.toString());
-          }
-        }
-
-        if (!mounted) return;
-        setState(() {
-          _paragraphs = extractedText;
-          _isLoading = false;
-        });
-      } else {
-        if (!mounted) return;
-        setState(() {
-          _errorMessage = 'الملف بتنسيق قديم (.doc)، يرجى تحويله إلى (.docx) لفتحه داخل التطبيق.';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'تعذر قراءة المستند داخل التطبيق.';
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.fileName, style: const TextStyle(fontSize: 16)),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15)),
-        ),
-      )
-          : ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: _paragraphs.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: SelectableText(
-              _paragraphs[index],
-              style: TextStyle(
-                fontSize: 16,
-                height: 1.6,
-                color: isDark ? Colors.white70 : Colors.black87,
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-
-/// شاشة عرض ملفات الإكسيل (.xlsx / .xls) الموحدة داخل التطبيق
-class ExcelViewerScreen extends StatefulWidget {
-  final String filePath;
-  final String fileName;
-
-  const ExcelViewerScreen({
-    super.key,
-    required this.filePath,
-    required this.fileName,
-  });
-
-  @override
-  State<ExcelViewerScreen> createState() => _ExcelViewerScreenState();
-}
-
-class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
-  Excel? _excel;
-  bool _isLoading = true;
-  bool _isOldFormat = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkAndLoadExcel();
-  }
-
-  Future<void> _checkAndLoadExcel() async {
-    if (widget.filePath.toLowerCase().endsWith('.xls')) {
-      if (!mounted) return;
-      setState(() {
-        _isOldFormat = true;
-        _isLoading = false;
-      });
-      return;
-    }
-
-    try {
-      final bytes = await File(widget.filePath).readAsBytes();
-      final excel = Excel.decodeBytes(bytes);
-      if (!mounted) return;
-      setState(() {
-        _excel = excel;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isOldFormat = true;
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _openExternal() async {
-    final result = await OpenFilex.open(widget.filePath);
-    if (result.type != ResultType.done && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر فتح الملف: ${result.message}')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.fileName, style: const TextStyle(fontSize: 16)),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _isOldFormat
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.description_outlined, size: 64, color: Colors.orange),
-              const SizedBox(height: 16),
-              const Text(
-                'تنسيق الملف قديم (.xls) ولا يمكن عرضه مباشرة، يمكنك فتحه باستخدام تطبيق خارجي.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: _openExternal,
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('فتح بواسطة تطبيق خارجي'),
-              ),
-            ],
-          ),
-        ),
-      )
-          : DefaultTabController(
-        length: _excel?.tables.keys.length ?? 0,
-        child: Column(
-          children: [
-            TabBar(
-              isScrollable: true,
-              tabs: _excel!.tables.keys.map((sheet) => Tab(text: sheet)).toList(),
-            ),
-            Expanded(
-              child: TabBarView(
-                children: _excel!.tables.keys.map((sheetName) {
-                  final sheet = _excel!.tables[sheetName]!;
-                  if (sheet.maxRows == 0 || sheet.maxColumns == 0) {
-                    return const Center(child: Text('جدول البيانات فارغ'));
-                  }
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        columns: List.generate(
-                          sheet.maxColumns,
-                              (index) => DataColumn(
-                            label: Text('عمود ${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                        rows: sheet.rows.map((row) {
-                          return DataRow(
-                            cells: List.generate(sheet.maxColumns, (colIndex) {
-                              final val = colIndex < row.length ? row[colIndex]?.value : '';
-                              return DataCell(Text(val?.toString() ?? ''));
-                            }),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// ويدجت إعادة التسمية منفصلة
+/// ودجت الحوار الخاصة بإعادة تسمية الملفات
 class _RenameDialogWidget extends StatefulWidget {
   final String initialName;
-  final dynamic loc; // يدعم AppLocalizations الخاص بمشروعك
+  final AppLocalizations loc;
   final Function(String) onSave;
 
   const _RenameDialogWidget({
@@ -1217,6 +1113,507 @@ class _RenameDialogWidgetState extends State<_RenameDialogWidget> {
           child: Text(widget.loc.save),
         ),
       ],
+    );
+  }
+}
+
+/// شاشة عرض المستندات المصورة
+class ImageViewerScreen extends StatelessWidget {
+  final String filePath;
+  final String fileName;
+
+  const ImageViewerScreen({
+    super.key,
+    required this.filePath,
+    required this.fileName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(fileName, style: const TextStyle(color: Colors.white, fontSize: 16)),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: Image.file(
+            File(filePath),
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => Center(
+              child: Text(loc.openFileError, style: const TextStyle(color: Colors.white)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// شاشة عرض مستندات الورد (.docx) داخل التطبيق
+class WordViewerScreen extends StatefulWidget {
+  final String filePath;
+  final String fileName;
+
+  const WordViewerScreen({
+    super.key,
+    required this.filePath,
+    required this.fileName,
+  });
+
+  @override
+  State<WordViewerScreen> createState() => _WordViewerScreenState();
+}
+
+class _WordViewerScreenState extends State<WordViewerScreen> {
+  List<String> _paragraphs = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _parseWordDocument();
+  }
+
+  Future<void> _parseWordDocument() async {
+    final loc = AppLocalizations.of(context)!;
+
+    if (widget.filePath.toLowerCase().endsWith('.doc')) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = loc.legacyDocFormatError;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final file = File(widget.filePath);
+      if (!await file.exists()) {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = loc.documentReaderError;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      ArchiveFile? docXmlFile;
+      for (final file in archive) {
+        if (file.name == 'word/document.xml') {
+          docXmlFile = file;
+          break;
+        }
+      }
+
+      if (docXmlFile != null) {
+        final contentBytes = docXmlFile.content as List<int>;
+        final content = utf8.decode(contentBytes, allowMalformed: true);
+
+        final regExpP = RegExp(r'<w:p[\s>].*?</w:p>');
+        final regExpT = RegExp(r'<w:t[\s>](.*?)</w:t>');
+
+        final List<String> extractedText = [];
+        for (final pMatch in regExpP.allMatches(content)) {
+          final pText = pMatch.group(0) ?? '';
+          final textBuffer = StringBuffer();
+          for (final tMatch in regExpT.allMatches(pText)) {
+            final rawVal = tMatch.group(1) ?? '';
+            final cleanVal = rawVal
+                .replaceAll('&lt;', '<')
+                .replaceAll('&gt;', '>')
+                .replaceAll('&amp;', '&')
+                .replaceAll('&quot;', '"')
+                .replaceAll('&apos;', "'");
+            textBuffer.write(cleanVal);
+          }
+          if (textBuffer.isNotEmpty) {
+            extractedText.add(textBuffer.toString());
+          }
+        }
+
+        if (!mounted) return;
+        setState(() {
+          _paragraphs = extractedText;
+          _isLoading = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = loc.documentReaderError;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = loc.documentReaderError;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.fileName, style: const TextStyle(fontSize: 16)),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15)),
+        ),
+      )
+          : _paragraphs.isEmpty
+          ? Center(
+        child: Text(
+          AppLocalizations.of(context)!.emptyTable,
+          style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
+        ),
+      )
+          : ListView.builder(
+        padding: const EdgeInsets.all(20),
+        itemCount: _paragraphs.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: SelectableText(
+              _paragraphs[index],
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.6,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// شاشة عرض ملفات الإكسيل (.xlsx / .xls) الموحدة داخل التطبيق
+class ExcelViewerScreen extends StatefulWidget {
+  final String filePath;
+  final String fileName;
+
+  const ExcelViewerScreen({
+    super.key,
+    required this.filePath,
+    required this.fileName,
+  });
+
+  @override
+  State<ExcelViewerScreen> createState() => _ExcelViewerScreenState();
+}
+
+class _ExcelViewerScreenState extends State<ExcelViewerScreen> {
+  Excel? _excel;
+  bool _isLoading = true;
+  bool _isOldFormat = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAndLoadExcel();
+  }
+
+  Future<void> _checkAndLoadExcel() async {
+    if (widget.filePath.toLowerCase().endsWith('.xls')) {
+      if (!mounted) return;
+      setState(() {
+        _isOldFormat = true;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final file = File(widget.filePath);
+      if (!await file.exists()) {
+        if (!mounted) return;
+        setState(() {
+          _isOldFormat = true;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      final excel = Excel.decodeBytes(bytes);
+      if (!mounted) return;
+
+      if (excel.tables.isEmpty) {
+        setState(() {
+          _isOldFormat = true;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _excel = excel;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isOldFormat = true;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _openExternal() async {
+    final loc = AppLocalizations.of(context)!;
+    final result = await OpenFilex.open(widget.filePath);
+    if (result.type != ResultType.done && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${loc.openFileError}: ${result.message}')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.fileName, style: const TextStyle(fontSize: 16)),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _isOldFormat || _excel == null
+          ? Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.description_outlined, size: 64, color: Colors.orange),
+              const SizedBox(height: 16),
+              Text(
+                loc.legacyXlsFormatError,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 15),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _openExternal,
+                icon: const Icon(Icons.open_in_new),
+                label: Text(loc.openExternalApp),
+              ),
+            ],
+          ),
+        ),
+      )
+          : DefaultTabController(
+        length: _excel?.tables.keys.length ?? 0,
+        child: Column(
+          children: [
+            TabBar(
+              isScrollable: true,
+              tabs: _excel!.tables.keys.map((sheet) => Tab(text: sheet)).toList(),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: _excel!.tables.keys.map((sheetName) {
+                  final sheet = _excel!.tables[sheetName]!;
+                  if (sheet.maxRows == 0 || sheet.maxColumns == 0) {
+                    return Center(child: Text(loc.emptyTable));
+                  }
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: List.generate(
+                          sheet.maxColumns,
+                              (index) => DataColumn(
+                            label: Text('${loc.columnPrefix} ${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        rows: sheet.rows.map((row) {
+                          return DataRow(
+                            cells: List.generate(sheet.maxColumns, (colIndex) {
+                              final val = colIndex < row.length ? row[colIndex]?.value : '';
+                              return DataCell(Text(val?.toString() ?? ''));
+                            }),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// شاشة مستكشف الملفات (File Explorer) لتصفح ذاكرة الجهاز والملفات المدعومة
+class FileExplorerScreen extends StatefulWidget {
+  final String initialPath;
+  const FileExplorerScreen({super.key, this.initialPath = '/storage/emulated/0'});
+
+  @override
+  State<FileExplorerScreen> createState() => _FileExplorerScreenState();
+}
+
+class _FileExplorerScreenState extends State<FileExplorerScreen> {
+  late String _currentPath;
+  List<FileSystemEntity> _entities = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPath = widget.initialPath;
+    _loadDirectory(_currentPath);
+  }
+
+  Future<void> _loadDirectory(String path) async {
+    setState(() => _isLoading = true);
+    try {
+      final dir = Directory(path);
+      if (await dir.exists()) {
+        final list = dir.listSync();
+        // ترتيب المجلدات أولاً ثم الملفات أبجدياً
+        list.sort((a, b) {
+          bool aIsDir = a is Directory;
+          bool bIsDir = b is Directory;
+          if (aIsDir && !bIsDir) return -1;
+          if (!aIsDir && bIsDir) return 1;
+          return a.path.toLowerCase().compareTo(b.path.toLowerCase());
+        });
+
+        // تصفية المجلدات وإظهار الملفات المدعومة فقط
+        _entities = list.where((entity) {
+          if (entity is Directory) return true;
+          final name = entity.path.split('/').last.toLowerCase();
+          if (name.startsWith('.')) return false;
+          final ext = name.contains('.') ? name.split('.').last : '';
+          return ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'png', 'jpg', 'jpeg', 'webp'].contains(ext);
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint("Error loading directory: $e");
+    }
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _currentPath = path;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final folderName = _currentPath.split('/').last.isEmpty ? 'Internal Storage' : _currentPath.split('/').last;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (_currentPath != '/storage/emulated/0' && _currentPath.isNotEmpty) {
+          final parent = Directory(_currentPath).parent.path;
+          if (parent.isNotEmpty && parent.length >= 15) {
+            _loadDirectory(parent);
+            return;
+          }
+        }
+        Navigator.pop(context);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(folderName, style: const TextStyle(fontSize: 16)),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              final parent = Directory(_currentPath).parent.path;
+              if (_currentPath != '/storage/emulated/0' && parent.isNotEmpty && parent.length >= 15) {
+                _loadDirectory(parent);
+              } else {
+                Navigator.pop(context);
+              }
+            },
+          ),
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _entities.isEmpty
+            ? const Center(child: Text('المجلد فارغ أو لا توجد ملفات مدعومة'))
+            : ListView.separated(
+          itemCount: _entities.length,
+          separatorBuilder: (context, index) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            final entity = _entities[index];
+            final isDir = entity is Directory;
+            final name = entity.path.split('/').last;
+
+            IconData iconData;
+            Color iconColor;
+
+            if (isDir) {
+              iconData = Icons.folder;
+              iconColor = Colors.amber;
+            } else {
+              final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
+              if (ext == 'pdf') {
+                iconData = Icons.picture_as_pdf;
+                iconColor = Colors.red;
+              } else if (['doc', 'docx'].contains(ext)) {
+                iconData = Icons.description;
+                iconColor = Colors.blue;
+              } else if (['xls', 'xlsx'].contains(ext)) {
+                iconData = Icons.table_chart;
+                iconColor = Colors.green;
+              } else if (['ppt', 'pptx'].contains(ext)) {
+                iconData = Icons.slideshow;
+                iconColor = Colors.orange;
+              } else if (ext == 'txt') {
+                iconData = Icons.article;
+                iconColor = Colors.indigo;
+              } else {
+                iconData = Icons.image;
+                iconColor = Colors.amber.shade700;
+              }
+            }
+
+            return ListTile(
+              leading: Icon(iconData, color: iconColor, size: 28),
+              title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: isDir ? const Text('مجلد', style: TextStyle(fontSize: 11)) : null,
+              onTap: () async {
+                if (isDir) {
+                  _loadDirectory(entity.path);
+                } else {
+                  await OpenFilex.open(entity.path);
+                }
+              },
+            );
+          },
+        ),
+      ),
     );
   }
 }
