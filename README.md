@@ -21,7 +21,7 @@
 ---
 
 ## 📱 Screenshots
-
+ 
 <p align="center">&nbsp;&nbsp;&nbsp;
   <img src="assets/screenshots/a.jpg" width="28%" alt="Screenshot A" />&nbsp;&nbsp;&nbsp;&nbsp;
   <img src="assets/screenshots/b.jpg" width="28%" alt="Screenshot B" />&nbsp;&nbsp;&nbsp;&nbsp;
