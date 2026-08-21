@@ -39,6 +39,15 @@
 * **Key Dependencies:** `open_filex`, `excel`, `archive`, `shared_preferences`, `receive_sharing_intent`
 
 ---
+---
+
+## 📥 Download & Test
+
+You can download the ready-to-use APK and test the app directly on your Android device:
+* **[📥 Download PDF X v1.0 (APK)](https://www.mediafire.com/file/kqrou5uzrgex4xe/PDF_X.apk/file)**
+
+---
+
 
 ## 👤 Developer Profile & Contact
 
