@@ -2,7 +2,7 @@
 
 **PDF X** is a high-performance, lightweight, and feature-rich document management and viewing application built with Flutter. It is designed to outperform traditional document readers by offering blazing-fast startup times, multi-language support, and an integrated native file explorer.
 
----
+---   
 
 ## ✨ Key Features & Performance
 
